@@ -1,0 +1,13 @@
+{
+  "name": "aviatorpro-bot",
+  "version": "1.0.0",
+  "description": "AviatorPro Telegram Bot",
+  "main": "aviator-bot.js",
+  "scripts": {
+    "start": "node aviator-bot.js"
+  },
+  "dependencies": {
+    "node-telegram-bot-api": "^0.64.0",
+    "@supabase/supabase-js": "^2.0.0"
+  }
+}
