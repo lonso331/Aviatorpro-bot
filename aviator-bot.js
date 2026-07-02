@@ -1,4 +1,4 @@
-// ══════════════════════════════════════════
+  // ══════════════════════════════════════════
 // AVIATOR PRO — BOT DE TELEGRAM
 // Node.js + node-telegram-bot-api
 // ══════════════════════════════════════════
@@ -115,12 +115,10 @@ bot.onText(/\/start(.*)/, async (msg, match) => {
     .limit(1)
 
   if(existente && existente.length > 0){
-    const j = existente[0]
-    await bot.sendMessage(chatId, 
-      `👋 Bienvenido de vuelta *${j.nombre}*\\!\n\n` +
-      `🎯 Ya estás registrado\\.\n` +
-      `📱 [Abrir AviatorPro](${APP_URL})`,
-      {parse_mode:'Markdown'}
+    await bot.sendMessage(chatId,
+      `👋 Ya estás registrado como *${existente[0].nombre}*\\!\n\n` +
+      `Recibirás las señales aquí automáticamente\\.`,
+      {parse_mode:'MarkdownV2'}
     )
     return
   }
@@ -129,17 +127,17 @@ bot.onText(/\/start(.*)/, async (msg, match) => {
   if(param && param.startsWith('inv_')){
     registros[chatId] = {paso:'nombre', invitacion:param}
     await bot.sendMessage(chatId,
-      `🎯 *AVIATOR PRO*\n\n` +
-      `Bienvenido\\! Vamos a crear tu cuenta\\.\n\n` +
-      `👤 ¿Cuál es tu *nombre de jugador*?`,
-      {parse_mode:'Markdown'}
+      `🎯 *AVIATOR PRO SEÑALES*\n\n` +
+      `Bienvenido\\! Para recibir las señales solo necesito tu nombre\\.\n\n` +
+      `👤 ¿Cuál es tu nombre?`,
+      {parse_mode:'MarkdownV2'}
     )
   } else {
     await bot.sendMessage(chatId,
-      `🔒 *AVIATOR PRO*\n\n` +
-      `Necesitas un link de invitación para registrarte\\.\n` +
+      `🔒 *AVIATOR PRO SEÑALES*\n\n` +
+      `Necesitas un link de invitación para unirte\\.\n` +
       `Contacta al administrador\\.`,
-      {parse_mode:'Markdown'}
+      {parse_mode:'MarkdownV2'}
     )
   }
 })
@@ -219,80 +217,57 @@ bot.onText(/\/activar (.+)/, async (msg, match) => {
   }
 })
 
-// ══ FLUJO DE REGISTRO ══
+// ══ FLUJO DE REGISTRO SIMPLIFICADO (solo nombre) ══
 bot.on('message', async (msg) => {
   const chatId = msg.chat.id.toString()
   const texto = msg.text || ''
-  
-  // Ignorar comandos
   if(texto.startsWith('/')) return
-  
   const estado = registros[chatId]
   if(!estado) return
 
   if(estado.paso === 'nombre'){
     if(texto.length < 2 || texto.length > 20){
-      await bot.sendMessage(chatId, '⚠️ Nombre debe tener entre 2 y 20 caracteres. Intenta de nuevo:')
+      await bot.sendMessage(chatId, '⚠️ Nombre debe tener entre 2 y 20 caracteres\\. Intenta de nuevo:', {parse_mode:'MarkdownV2'})
       return
     }
     // Verificar nombre disponible
     const {data:existe} = await sb.from('jugadores').select('id').eq('nombre', texto)
     if(existe && existe.length > 0){
-      await bot.sendMessage(chatId, '⚠️ Ese nombre ya está en uso. Elige otro:')
+      await bot.sendMessage(chatId, '⚠️ Ese nombre ya está en uso\\. Elige otro:', {parse_mode:'MarkdownV2'})
       return
     }
-    registros[chatId].nombre = texto
-    registros[chatId].paso = 'pin'
-    await bot.sendMessage(chatId, `✅ Nombre: *${texto}*\n\n🔐 Ahora elige tu *PIN de 4 dígitos*:`, {parse_mode:'Markdown'})
-  }
-  else if(estado.paso === 'pin'){
-    if(!/^\d{4}$/.test(texto)){
-      await bot.sendMessage(chatId, '⚠️ El PIN debe ser exactamente 4 números. Intenta de nuevo:')
-      return
-    }
-    registros[chatId].pin = texto
-    registros[chatId].paso = 'confirmar'
-    await bot.sendMessage(chatId, `🔐 Confirma tu PIN: *${texto}*\n\nEscribe el PIN nuevamente:`, {parse_mode:'Markdown'})
-  }
-  else if(estado.paso === 'confirmar'){
-    if(texto !== registros[chatId].pin){
-      await bot.sendMessage(chatId, '❌ Los PINs no coinciden. Escribe tu PIN nuevamente:')
-      registros[chatId].paso = 'pin'
-      return
-    }
-    
-    // Crear cuenta
+
+    // Crear cuenta solo con nombre y telegram_chat_id
     const colores = ['#00d4ff','#f5a623','#00e5a0','#a78bfa','#ff7b2c','#ff3d5a','#ffd166']
     const color = colores[Math.floor(Math.random()*colores.length)]
-    
+
     const {data:nuevo, error} = await sb.from('jugadores').insert({
-      nombre: registros[chatId].nombre,
-      pin: registros[chatId].pin,
+      nombre: texto,
+      pin: '0000',
       avatar_color: color,
       es_admin: false,
       telegram_chat_id: chatId
     }).select()
-    
+
     delete registros[chatId]
-    
+
     if(error){
-      await bot.sendMessage(chatId, `❌ Error al crear cuenta: ${error.message}`)
+      await bot.sendMessage(chatId, `❌ Error: ${error.message}`)
       return
     }
-    
+
+    const nomEsc = texto.replace(/[_*[\]()~`>#+=|{}.!-]/g,'\\$&')
     await bot.sendMessage(chatId,
-      `🎉 *¡Cuenta creada exitosamente\\!*\n\n` +
-      `👤 Nombre: *${nuevo[0].nombre}*\n` +
-      `🔐 PIN: *${registros[chatId]?.pin || '****'}*\n\n` +
-      `📱 [Abrir AviatorPro](${APP_URL})\n\n` +
-      `Recibirás señales automáticas aquí cuando el motor detecte disparadores\\.`,
-      {parse_mode:'Markdown'}
+      `🎉 *¡Listo ${nomEsc}\\!*\n\n` +
+      `✅ Ya estás suscrito a las señales de AviatorPro\\.\n` +
+      `📲 Recibirás alertas aquí cada vez que el motor detecte un disparador\\.`,
+      {parse_mode:'MarkdownV2'}
     )
-    
+
     // Notificar al admin
     await bot.sendMessage(ADMIN_CHAT_ID,
-      `✅ Nuevo jugador registrado: *${nuevo[0].nombre}* (vía Telegram)`,
-      {parse_mode:'Markdown'}
+      `✅ Nuevo suscriptor: *${nomEsc}*`,
+      {parse_mode:'MarkdownV2'}
     )
   }
 })
